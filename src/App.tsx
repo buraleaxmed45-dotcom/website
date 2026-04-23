@@ -609,6 +609,34 @@ function MetaTagHandler() {
   return null;
 }
 
+// --- Meta Tag Handler (for Verification Tags like Monetag) ---
+function MetaTagHandler() {
+  useEffect(() => {
+    const load = () => {
+      const code = localStorage.getItem('user-meta-tags') || "";
+      // Remove existing custom meta tags first to avoid duplicates
+      document.querySelectorAll('meta[data-user-added="true"]').forEach(el => el.remove());
+      
+      if (code) {
+        const range = document.createRange();
+        const frag = range.createContextualFragment(code);
+        frag.querySelectorAll('meta').forEach(meta => {
+          meta.setAttribute('data-user-added', 'true');
+          document.head.appendChild(meta);
+        });
+      }
+    };
+    load();
+    window.addEventListener('ads-updated', load);
+    return () => {
+      window.removeEventListener('ads-updated', load);
+      document.querySelectorAll('meta[data-user-added="true"]').forEach(el => el.remove());
+    };
+  }, []);
+
+  return null;
+}
+
 // --- Background Ad Handler ---
 function BackgroundAdsHandler() {
   const bgSlots = ["slot-6-v3", "slot-7-v3", "slot-8-v3", "slot-9-v3", "slot-10-v3"];
