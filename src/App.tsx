@@ -129,6 +129,7 @@ function AdsManager({ onOpenChange, isOpen, setIsOpen }: {
   }, [isOpen, onOpenChange]);
 
   const [codes, setCodes] = useState<Record<string, string>>({});
+  const [metaTags, setMetaTags] = useState("");
 
   useEffect(() => {
     const initial: Record<string, string> = {};
@@ -136,11 +137,18 @@ function AdsManager({ onOpenChange, isOpen, setIsOpen }: {
       initial[s.id] = localStorage.getItem(`user-ad-${s.id}`) || "";
     });
     setCodes(initial);
+    setMetaTags(localStorage.getItem('user-meta-tags') || "");
   }, [isOpen]);
 
   const saveAd = (id: string, code: string) => {
     localStorage.setItem(`user-ad-${id}`, code);
     setCodes(prev => ({ ...prev, [id]: code }));
+    window.dispatchEvent(new Event('ads-updated'));
+  };
+
+  const saveMeta = (val: string) => {
+    localStorage.setItem('user-meta-tags', val);
+    setMetaTags(val);
     window.dispatchEvent(new Event('ads-updated'));
   };
 
@@ -178,7 +186,7 @@ function AdsManager({ onOpenChange, isOpen, setIsOpen }: {
                   <button 
                     onClick={() => {
                         localStorage.clear();
-                        window.location.href = window.location.origin + window.location.pathname + '?reset=' + Date.now();
+                        window.location.assign(window.location.origin + window.location.pathname + '?clear=' + Date.now());
                     }}
                     className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-full text-[10px] font-black uppercase tracking-widest transition-all border-2 border-white shadow-lg"
                   >
@@ -191,6 +199,21 @@ function AdsManager({ onOpenChange, isOpen, setIsOpen }: {
               </div>
 
               <div className="grid gap-12">
+                {/* Meta Verification Section */}
+                <div className="bg-blue-500/10 border border-blue-500/20 p-8 rounded-2xl mb-4">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xs uppercase font-bold tracking-[0.2em] text-blue-400">Verification Meta Tags (Monetag etc.)</h3>
+                    <Info size={14} className="text-blue-400/50" />
+                  </div>
+                  <textarea 
+                    className="w-full h-24 bg-black/50 border border-blue-500/20 rounded-lg p-6 font-mono text-sm text-blue-300 placeholder:text-white/5 outline-none focus:border-blue-500/40 transition-all font-light"
+                    placeholder='<meta name="monetag" content="..." />'
+                    value={metaTags}
+                    onChange={(e) => saveMeta(e.target.value)}
+                  />
+                  <p className="mt-3 text-[10px] text-blue-400/40 italic text-right">Koodhka halkaan lagu daro wuxuu si toos ah u galaa Header-ka website-ka.</p>
+                </div>
+
                 {slots.map((slot) => (
                   <div key={slot.id} className="bg-white/[0.03] border border-white/5 p-8 rounded-2xl">
                     <div className="flex justify-between items-center mb-4">
@@ -558,7 +581,35 @@ function Footer() {
   );
 }
 
-// --- Background Ad Handler (for Pop-ups/Scripts without UI) ---
+// --- Meta Tag Handler (for Verification Tags like Monetag) ---
+function MetaTagHandler() {
+  useEffect(() => {
+    const load = () => {
+      const code = localStorage.getItem('user-meta-tags') || "";
+      // Remove existing custom meta tags first to avoid duplicates
+      document.querySelectorAll('meta[data-user-added="true"]').forEach(el => el.remove());
+      
+      if (code) {
+        const range = document.createRange();
+        const frag = range.createContextualFragment(code);
+        frag.querySelectorAll('meta').forEach(meta => {
+          meta.setAttribute('data-user-added', 'true');
+          document.head.appendChild(meta);
+        });
+      }
+    };
+    load();
+    window.addEventListener('ads-updated', load);
+    return () => {
+      window.removeEventListener('ads-updated', load);
+      document.querySelectorAll('meta[data-user-added="true"]').forEach(el => el.remove());
+    };
+  }, []);
+
+  return null;
+}
+
+// --- Background Ad Handler ---
 function BackgroundAdsHandler() {
   const bgSlots = ["slot-6-v3", "slot-7-v3", "slot-8-v3", "slot-9-v3", "slot-10-v3"];
   const containerRef = useRef<HTMLDivElement>(null);
@@ -648,6 +699,7 @@ export default function App() {
         setIsOpen={setIsAdsManagerOpen}
       />
       <BackgroundAdsHandler />
+      <MetaTagHandler />
     </div>
   );
 }
